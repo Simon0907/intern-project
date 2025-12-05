@@ -1,184 +1,172 @@
-# app.py
 import streamlit as st
 import numpy as np
 import pandas as pd
 import joblib
 import plotly.graph_objects as go
-from pathlib import Path
 
-st.set_page_config(page_title="Student Performance Prediction", layout="wide", page_icon="📊")
+# ---------------------- Load Model + Assets ----------------------
+model = joblib.load("student_model.joblib")
+scaler = joblib.load("scaler.joblib")
+feature_columns = joblib.load("model_features.joblib")
 
-# ------------------ CSS: Premium Pink/Violet Glassmorphism ------------------
-st.markdown(
-    """
+# ---------------------- Page Styling ----------------------
+st.set_page_config(page_title="Student Performance Prediction", layout="wide")
+
+# Glassmorphism CSS
+st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap');
-
-    html, body, [class*="css"]  {
-        font-family: 'Poppins', sans-serif;
-        background: linear-gradient(120deg, #f6d3ff 0%, #f2a3ff 35%, #9a6bff 75%, #6b3bff 100%);
-        background-attachment: fixed;
-    }
-
-    /* floating blurred circles */
-    .float-circle {
-        position: fixed;
-        border-radius: 50%;
-        filter: blur(70px);
-        opacity: 0.55;
-        z-index: 0;
-    }
-    #circle1 { width: 420px; height: 420px; background: #ff7bd1; top: 5%; left: 3%; }
-    #circle2 { width: 380px; height: 380px; background: #a268ff; bottom: 5%; right: 5%; }
-
-    /* glass card */
-    .glass-card {
-        position: relative;
-        backdrop-filter: blur(14px) saturate(140%);
-        -webkit-backdrop-filter: blur(14px) saturate(140%);
-        background: rgba(255,255,255,0.10);
-        border: 1px solid rgba(255,255,255,0.12);
-        box-shadow: 0 8px 30px rgba(12, 12, 14, 0.25);
-        border-radius: 18px;
-        padding: 24px;
-        transition: transform .25s ease, box-shadow .25s ease;
-    }
-    .glass-card:hover { transform: translateY(-6px); box-shadow: 0 18px 45px rgba(12,12,14,0.35); }
-
-    .title {
-        font-size: 44px;
-        font-weight: 800;
-        color: #ffffff;
-        margin-bottom: 6px;
-        text-shadow: 0 6px 20px rgba(0,0,0,0.25);
-    }
-    .subtitle {
-        color: rgba(255,255,255,0.95);
-        margin-bottom: 18px;
-        opacity: 0.95;
-    }
-
-    /* inputs: can't modify Streamlit internals fully, but style wrappers */
-    .input-wrap { padding-top: 6px; padding-bottom: 6px; }
-
-    /* style streamlit button to be gradient */
-    .stButton>button {
-        background: linear-gradient(90deg,#ff6cc9,#8a6bff) !important;
-        color: white !important;
-        border-radius: 12px;
-        padding: 12px 18px;
-        font-size: 18px;
-        font-weight: 700;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-        border: none;
-    }
-    .stButton>button:hover { transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,0,0,0.28); }
-
-    /* result box */
-    .result-box {
-        background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-        border-left: 6px solid #9bffb8;
-        padding: 18px;
-        border-radius: 12px;
-        font-size: 20px;
-        font-weight: 700;
-        color: #ffffff;
-        margin-top: 12px;
-        box-shadow: 0 6px 18px rgba(0,0,0,0.18);
-    }
-
-    /* section titles */
-    .section-title {
-        color: #fff;
-        font-size: 22px;
-        font-weight: 700;
-        margin-top: 18px;
-        margin-bottom: 12px;
-    }
-
-    /* small helper */
-    .muted { color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 10px; }
-
+        /* Background gradient */
+        .main {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px;
+        }
+        
+        .stApp {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Glassmorphism cards */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            margin-bottom: 20px;
+        }
+        
+        /* Input fields styling */
+        .stNumberInput > div > div > input,
+        .stSelectbox > div > div > select {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            color: white;
+            padding: 12px;
+        }
+        
+        /* Labels */
+        .stNumberInput > label,
+        .stSelectbox > label {
+            color: white !important;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        /* Button styling */
+        .stButton > button {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 15px 30px;
+            font-weight: 600;
+            font-size: 18px;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        
+        .stButton > button:hover {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Result card */
+        .result-card {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 22px;
+            text-align: center;
+            font-weight: 700;
+            margin: 20px 0;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        
+        /* Headers */
+        h1 {
+            color: white !important;
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            margin-bottom: 10px;
+        }
+        
+        h2, h3 {
+            color: white !important;
+            font-weight: 700;
+        }
+        
+        /* Subheader text */
+        .stMarkdown p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+        
+        /* Chart containers */
+        .js-plotly-plot {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 15px;
+        }
+        
+        /* Remove default padding */
+        .block-container {
+            padding-top: 2rem;
+        }
+        
+        /* Metric cards */
+        [data-testid="stMetricValue"] {
+            color: white;
+        }
+        
+        [data-testid="stMetricLabel"] {
+            color: rgba(255, 255, 255, 0.8);
+        }
     </style>
+""", unsafe_allow_html=True)
 
-    <div id="circle1" class="float-circle"></div>
-    <div id="circle2" class="float-circle"></div>
-    """,
-    unsafe_allow_html=True,
-)
+# ---------------------- HEADER ----------------------
+st.markdown("<h1>📊 Student Performance Prediction</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: rgba(255,255,255,0.9); font-size: 18px; margin-bottom: 30px;'>Enter student scores to predict performance level</p>", unsafe_allow_html=True)
 
-# ------------------ Load model files (with helpful error UI) ------------------
-model_path = Path("student_model.joblib")
-scaler_path = Path("scaler.joblib")
-features_path = Path("model_features.joblib")
-
-load_ok = True
-try:
-    model = joblib.load(model_path)
-except Exception as e:
-    load_ok = False
-    st.error(
-        "❌ Could not load `student_model.joblib`. Make sure the file exists in the app folder and is pushed to GitHub."
-    )
-
-try:
-    scaler = joblib.load(scaler_path)
-except Exception as e:
-    load_ok = False
-    st.error(
-        "❌ Could not load `scaler.joblib`. Make sure the file exists in the app folder and is pushed to GitHub."
-    )
-
-try:
-    feature_columns = joblib.load(features_path)
-except Exception as e:
-    load_ok = False
-    st.error(
-        "❌ Could not load `model_features.joblib`. Make sure the file exists in the app folder and is pushed to GitHub."
-    )
-
-# If loading failed, stop and show instructions
-if not load_ok:
-    st.stop()
-
-# ------------------ Header ------------------
+# ---------------------- Input Section ----------------------
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("<div style='display:flex;align-items:center;gap:18px;'>", unsafe_allow_html=True)
-st.markdown("<div><h1 class='title'>✨ Student Performance Prediction</h1>"
-            "<div class='subtitle'>Predict performance category (Low / Medium / High) using three scores.</div></div>",
-            unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
 
-# ------------------ Input Card ------------------
-st.markdown("<div class='glass-card' style='margin-top:20px;'>", unsafe_allow_html=True)
-st.markdown("<div class='section-title'>📝 Input Student Details</div>", unsafe_allow_html=True)
-st.markdown("<div class='muted'>Provide Math, Reading and Writing scores (0 - 100). Gender is optional for the model.</div>", unsafe_allow_html=True)
-
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns(2)
 
 with col1:
-    with st.container():
-        st.markdown("<div class='input-wrap'>", unsafe_allow_html=True)
-        math = st.number_input("📘 Math Score", min_value=0, max_value=100, value=70, step=1)
-        writing = st.number_input("✍️ Writing Score", min_value=0, max_value=100, value=67, step=1)
-        st.markdown("</div>", unsafe_allow_html=True)
+    math = st.number_input("📘 Math Score", 0, 100, 0)
+    writing = st.number_input("✍️ Writing Score", 0, 100, 0)
 
 with col2:
-    with st.container():
-        st.markdown("<div class='input-wrap'>", unsafe_allow_html=True)
-        reading = st.number_input("📖 Reading Score", min_value=0, max_value=100, value=90, step=1)
-        gender = st.selectbox("🧑 Gender", ["female", "male"])
-        st.markdown("</div>", unsafe_allow_html=True)
+    reading = st.number_input("📖 Reading Score", 0, 100, 0)
+    gender = st.selectbox("🧑 Gender", ["female", "male"])
 
-st.markdown("</div>", unsafe_allow_html=True)  # close input card
+st.markdown("</div>", unsafe_allow_html=True)
 
-# ------------------ Prepare features ------------------
-performance = (math + reading + writing) / 3.0
+# ---------------------- Feature Processing ----------------------
+performance = (math + reading + writing) / 3
+
 gender_encoded = 0 if gender == "female" else 1
 gender_female = 1 if gender == "female" else 0
 gender_male = 1 if gender == "male" else 0
-pe = 0 if performance < 60 else (1 if performance < 80 else 2)
+
+if performance < 60:
+    pe = 0
+elif performance < 80:
+    pe = 1
+else:
+    pe = 2
 
 input_dict = {
     'math score': math,
@@ -190,95 +178,68 @@ input_dict = {
     'gender_female': gender_female,
     'gender_male': gender_male,
 }
+
 input_df = pd.DataFrame([input_dict])
-# Align columns to training order (safe)
 input_df = input_df.reindex(columns=feature_columns, fill_value=0)
+input_df = input_df.fillna(0)
 
-# ------------------ Predict button ------------------
-st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-predict_clicked = st.button("🔮 Predict Performance")
+# ---------------------- Predict Button ----------------------
+predict = st.button("🔍 Predict Performance", use_container_width=True)
 
-# ------------------ If clicked: predict and show premium UI ------------------
-if predict_clicked:
-    # safety: ensure no NaNs
-    input_df = input_df.fillna(0)
+if predict:
+    scaled_input = scaler.transform(input_df)
+    prediction = int(model.predict(scaled_input)[0])
+    probabilities = model.predict_proba(scaled_input)[0]
 
-    # scale & predict
-    try:
-        scaled = scaler.transform(input_df)
-    except Exception as e:
-        st.error("Scaler transform failed. Confirm the scaler was fitted on the same feature order used here.")
-        raise
+    levels = ["Low", "Medium", "High"]
+    final_label = levels[prediction]
 
-    try:
-        ypred = model.predict(scaled)
-        yprob = model.predict_proba(scaled)[0]
-    except Exception as e:
-        st.error("Model prediction failed. Confirm model compatibility with the features provided.")
-        raise
-
-    label_map = ["Low", "Medium", "High"]
-    pred_label = label_map[int(ypred[0])]
-
-    # Result box
+    # Result Box
     st.markdown(
-        f"<div class='glass-card' style='margin-top:12px;'>"
-        f"<div class='result-box'>🎯 Predicted Category: <span style='color:#ffd86b'> {pred_label} </span></div>"
-        f"</div>",
-        unsafe_allow_html=True,
+        f"<div class='result-card'>🎯 <b>Predicted Category:</b> {final_label}</div>",
+        unsafe_allow_html=True
     )
 
-    # Probability bar
-    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+    # ---------------------- Charts in glass cards ----------------------
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.subheader("📈 Prediction Confidence")
-    prob_df = pd.DataFrame({"Performance Level": label_map, "Probability": yprob}).set_index("Performance Level")
+    st.markdown("<h3>📈 Prediction Confidence</h3>", unsafe_allow_html=True)
+
+    prob_df = pd.DataFrame({
+        "Performance Level": levels,
+        "Probability": probabilities
+    }).set_index("Performance Level")
+
     st.bar_chart(prob_df)
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # Gauge (Plotly)
-    st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+    # ---------------------- Gauge Chart ----------------------
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.subheader("📉 Performance Gauge")
-    gauge = go.Figure(go.Indicator(
-        mode="gauge+number+delta",
+    st.markdown("<h3>📉 Performance Gauge</h3>", unsafe_allow_html=True)
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
         value=performance,
-        number={'suffix': ""},
-        title={'text': "Average Performance Score"},
-        delta={'reference': 75, 'increasing': {'color': "#00cc88"}, 'decreasing': {'color': "#ff4d4d"}},
+        title={"text": "Average Performance Score", "font": {"color": "white", "size": 20}},
+        number={"font": {"color": "white", "size": 40}},
         gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "#ff6cc9"},
-            'bgcolor': "rgba(0,0,0,0)",
+            'axis': {'range': [0, 100], 'tickcolor': "white"},
+            'bar': {'color': "rgba(255, 255, 255, 0.8)"},
+            'bgcolor': "rgba(255, 255, 255, 0.1)",
+            'borderwidth': 2,
+            'bordercolor': "rgba(255, 255, 255, 0.3)",
             'steps': [
-                {'range': [0, 60], 'color': "#ff6b6b"},
-                {'range': [60, 80], 'color': "#ffd86b"},
-                {'range': [80, 100], 'color': "#7effb2"},
+                {'range': [0, 60], 'color': "rgba(255, 77, 77, 0.4)"},
+                {'range': [60, 80], 'color': "rgba(255, 233, 74, 0.4)"},
+                {'range': [80, 100], 'color': "rgba(76, 175, 80, 0.4)"},
             ],
-            'threshold': {
-                'line': {'color': "white", 'width': 2},
-                'thickness': 0.75,
-                'value': performance
-            }
         }
     ))
-    gauge.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
-    st.plotly_chart(gauge, use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font={'color': 'white'}
+    )
 
-    # Detailed probabilities table (small)
-    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.write("Confidence (detailed):")
-    probs_display = pd.DataFrame({"Level": label_map, "Probability": (yprob * 100).round(2)})
-    probs_display = probs_display.set_index("Level")
-    st.table(probs_display)
+    st.plotly_chart(fig, use_container_width=True)
     st.markdown("</div>", unsafe_allow_html=True)
-
-# ------------------ Footer / Tips ------------------
-st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-st.markdown(
-    "<div style='color: rgba(255,255,255,0.92); font-size:13px; opacity:0.95'>"
-    "Tip: Push changes to GitHub then restart Streamlit Cloud (Manage app → Restart) if your UI doesn't update immediately."
-    "</div>", unsafe_allow_html=True
-)
