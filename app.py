@@ -4,59 +4,95 @@ import pandas as pd
 import joblib
 import plotly.graph_objects as go
 
-# ---------------------- Load Model + Assets ----------------------
+# --------------------------
+# PAGE CONFIG
+# --------------------------
+st.set_page_config(
+    page_title="Student Performance Predictor",
+    layout="wide"
+)
+
+# --------------------------
+# CUSTOM CSS (Modern UI)
+# --------------------------
+st.markdown("""
+<style>
+
+body {
+    background-color: #f7f9fc;
+}
+
+.big-title {
+    font-size: 38px;
+    font-weight: 800;
+    color: #1f2937;
+    display: flex;
+    gap: 10px;
+}
+
+.card {
+    padding: 25px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+
+.predict-btn {
+    background: linear-gradient(90deg, #6366f1, #3b82f6);
+    color: white;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-size: 16px;
+    border: none;
+}
+
+.result-box {
+    background: #e8fce8;
+    padding: 18px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.sub-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 20px;
+    color: #374151;
+    display: flex;
+    gap: 10px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# --------------------------
+# LOAD MODELS
+# --------------------------
 model = joblib.load("student_model.joblib")
 scaler = joblib.load("scaler.joblib")
 feature_columns = joblib.load("model_features.joblib")
 
-# ---------------------- Page Styling ----------------------
-st.set_page_config(page_title="Student Performance Prediction", layout="wide")
+# --------------------------
+# TITLE
+# --------------------------
+st.markdown(
+    "<div class='big-title'>📊 Student Performance Prediction</div>",
+    unsafe_allow_html=True
+)
 
-# Custom CSS for modern UI
-st.markdown("""
-    <style>
-        .main {
-            background-color: #f5f7fa;
-            padding: 20px;
-        }
-        .stMetric {
-            background: white;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
-        }
-        .input-card {
-            background: white;
-            padding: 25px;
-            border-radius: 16px;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
-        .result-card {
-            background: #e8f9f1;
-            padding: 18px;
-            border-radius: 12px;
-            font-size: 18px;
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-        }
-        h1 {
-            color: #202a44;
-            font-weight: 900;
-        }
-    </style>
-""", unsafe_allow_html=True)
+st.write("Enter student scores to predict the performance category. The app uses ML to classify students into **Low**, **Medium**, or **High** performance.")
 
-# ---------------------- HEADER ----------------------
-st.markdown("<h1>📊 Student Performance Prediction</h1>", unsafe_allow_html=True)
-st.write("Enter the student's scores below to predict the performance level.")
-
-# ---------------------- Input Section ----------------------
+# --------------------------
+# INPUT CARD
+# --------------------------
+st.markdown("<div class='sub-title'>📝 Input Student Details</div>", unsafe_allow_html=True)
 with st.container():
-    st.markdown("<div class='input-card'>", unsafe_allow_html=True)
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
@@ -70,9 +106,10 @@ with st.container():
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------------------- Feature Processing ----------------------
+# --------------------------
+# PREPARE DATA
+# --------------------------
 performance = (math + reading + writing) / 3
-
 gender_encoded = 0 if gender == "female" else 1
 gender_female = 1 if gender == "female" else 0
 gender_male = 1 if gender == "male" else 0
@@ -97,12 +134,13 @@ input_dict = {
 
 input_df = pd.DataFrame([input_dict])
 input_df = input_df.reindex(columns=feature_columns, fill_value=0)
-input_df = input_df.fillna(0)
 
-# ---------------------- Predict Button ----------------------
-predict = st.button("🔍 Predict Performance", use_container_width=True)
+# --------------------------
+# PREDICT BUTTON
+# --------------------------
+clicked = st.button("🔍 Predict Performance", use_container_width=True)
 
-if predict:
+if clicked:
     scaled_input = scaler.transform(input_df)
     prediction = int(model.predict(scaled_input)[0])
     probabilities = model.predict_proba(scaled_input)[0]
@@ -110,24 +148,26 @@ if predict:
     levels = ["Low", "Medium", "High"]
     final_label = levels[prediction]
 
-    # Result Box
+    # RESULT BOX
     st.markdown(
-        f"<div class='result-card'>🎯 <b>Predicted Category:</b> {final_label}</div>",
+        f"<div class='result-box'>🎯 Predicted Category: <b>{final_label}</b></div>",
         unsafe_allow_html=True
     )
 
-    # ---------------------- Probability Chart ----------------------
-    st.subheader("📈 Prediction Confidence")
-
+    # --------------------------
+    # PROBABILITY BAR
+    # --------------------------
+    st.markdown("<div class='sub-title'>📈 Prediction Confidence</div>", unsafe_allow_html=True)
     prob_df = pd.DataFrame({
         "Performance Level": levels,
         "Probability": probabilities
-    }).set_index("Performance Level")
+    })
+    st.bar_chart(prob_df.set_index("Performance Level"))
 
-    st.bar_chart(prob_df)
-
-    # ---------------------- Gauge Chart ----------------------
-    st.subheader("📉 Performance Gauge")
+    # --------------------------
+    # GAUGE CHART
+    # --------------------------
+    st.markdown("<div class='sub-title'>📉 Performance Gauge</div>", unsafe_allow_html=True)
 
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
@@ -135,13 +175,12 @@ if predict:
         title={"text": "Average Performance Score"},
         gauge={
             'axis': {'range': [0, 100]},
-            'bar': {'color': "#001f54"},
+            'bar': {'color': "#3b82f6"},
             'steps': [
-                {'range': [0, 60], 'color': "#ff4d4d"},
-                {'range': [60, 80], 'color': "#ffe94a"},
-                {'range': [80, 100], 'color': "#4CAF50"},
+                {'range': [0, 60], 'color': "red"},
+                {'range': [60, 80], 'color': "yellow"},
+                {'range': [80, 100], 'color': "green"},
             ],
         }
     ))
-
     st.plotly_chart(fig, use_container_width=True)
