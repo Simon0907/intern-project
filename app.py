@@ -1,112 +1,147 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
+import joblib
+import plotly.graph_objects as go
 
-# ------------------- GLASSMORPHISM CSS -------------------
+# ---------------------- Load Model + Assets ----------------------
+model = joblib.load("student_model.joblib")
+scaler = joblib.load("scaler.joblib")
+feature_columns = joblib.load("model_features.joblib")
 
+# ---------------------- Page Styling ----------------------
+st.set_page_config(page_title="Student Performance Prediction", layout="wide")
+
+# Custom CSS for modern UI
 st.markdown("""
-<style>
-
-body {
-    background: url('https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1950&q=80')
-                no-repeat fixed center;
-    background-size: cover;
-    font-family: 'Inter', sans-serif;
-}
-
-.glass-card {
-    backdrop-filter: blur(18px);
-    background: rgba(255, 255, 255, 0.18);
-    border-radius: 18px;
-    padding: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-    margin-bottom: 25px;
-}
-
-.big-title {
-    font-size: 42px;
-    font-weight: 900;
-    color: white;
-    text-shadow: 0px 2px 6px rgba(0,0,0,0.3);
-}
-
-.section-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: #fff;
-    margin-bottom: 15px;
-}
-
-.predict-btn button {
-    width: 100%;
-    border-radius: 12px !important;
-    padding: 14px 0;
-    font-size: 18px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #6a11cb, #2575fc) !important;
-    color: white !important;
-    border: none !important;
-}
-
-.result-box {
-    backdrop-filter: blur(14px);
-    background: rgba(52, 255, 138, 0.2);
-    padding: 18px;
-    border-radius: 14px;
-    font-size: 20px;
-    border-left: 5px solid #31d47a;
-    color: white;
-}
-
-</style>
+    <style>
+        .main {
+            background-color: #f5f7fa;
+            padding: 20px;
+        }
+        .stMetric {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0px 2px 5px rgba(0,0,0,0.1);
+        }
+        .input-card {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        .result-card {
+            background: #e8f9f1;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 18px;
+        }
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+        }
+        h1 {
+            color: #202a44;
+            font-weight: 900;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
+# ---------------------- HEADER ----------------------
+st.markdown("<h1>📊 Student Performance Prediction</h1>", unsafe_allow_html=True)
+st.write("Enter the student's scores below to predict the performance level.")
 
-# ------------------- HEADER -------------------
+# ---------------------- Input Section ----------------------
+with st.container():
+    st.markdown("<div class='input-card'>", unsafe_allow_html=True)
 
-st.markdown("""
-<div class="glass-card">
-    <h1 class="big-title">✨ Student Performance Prediction</h1>
-    <p style="font-size:18px; color:#f5f5f5;">
-        A modern AI-powered tool that predicts student performance levels using Machine Learning.
-    </p>
-</div>
-""", unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
 
+    with col1:
+        math = st.number_input("📘 Math Score", 0, 100, 0)
+        writing = st.number_input("✍️ Writing Score", 0, 100, 0)
 
-# ------------------- INPUT SECTION -------------------
+    with col2:
+        reading = st.number_input("📖 Reading Score", 0, 100, 0)
+        gender = st.selectbox("🧑 Gender", ["female", "male"])
 
-st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-st.markdown('<h3 class="section-title">📝 Student Details</h3>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-col1, col2 = st.columns(2)
+# ---------------------- Feature Processing ----------------------
+performance = (math + reading + writing) / 3
 
-with col1:
-    math = st.number_input("📘 Math Score", 0, 100, 70)
-    writing = st.number_input("✍️ Writing Score", 0, 100, 67)
+gender_encoded = 0 if gender == "female" else 1
+gender_female = 1 if gender == "female" else 0
+gender_male = 1 if gender == "male" else 0
 
-with col2:
-    reading = st.number_input("📚 Reading Score", 0, 100, 90)
-    gender = st.selectbox("🧑 Gender", ["male", "female"])
+if performance < 60:
+    pe = 0
+elif performance < 80:
+    pe = 1
+else:
+    pe = 2
 
-st.markdown("</div>", unsafe_allow_html=True)
+input_dict = {
+    'math score': math,
+    'reading score': reading,
+    'writing score': writing,
+    'performance': performance,
+    'gender_encoded': gender_encoded,
+    'performance_encoded': pe,
+    'gender_female': gender_female,
+    'gender_male': gender_male,
+}
 
+input_df = pd.DataFrame([input_dict])
+input_df = input_df.reindex(columns=feature_columns, fill_value=0)
+input_df = input_df.fillna(0)
 
-# ------------------- PREDICTION BUTTON -------------------
-
-st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-predict = st.button("🔍 Predict Performance", key="predict")
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# ------------------- OUTPUT -------------------
+# ---------------------- Predict Button ----------------------
+predict = st.button("🔍 Predict Performance", use_container_width=True)
 
 if predict:
-    predicted = "Medium"  # ⬅ replace with model output
+    scaled_input = scaler.transform(input_df)
+    prediction = int(model.predict(scaled_input)[0])
+    probabilities = model.predict_proba(scaled_input)[0]
+
+    levels = ["Low", "Medium", "High"]
+    final_label = levels[prediction]
+
+    # Result Box
     st.markdown(
-        f'<div class="result-box">🎯 Predicted Category: <b>{predicted}</b></div>',
+        f"<div class='result-card'>🎯 <b>Predicted Category:</b> {final_label}</div>",
         unsafe_allow_html=True
     )
 
-    st.subheader("📈 Confidence Chart")
-    st.line_chart([0.4, 0.5, 0.6, 0.8])
+    # ---------------------- Probability Chart ----------------------
+    st.subheader("📈 Prediction Confidence")
+
+    prob_df = pd.DataFrame({
+        "Performance Level": levels,
+        "Probability": probabilities
+    }).set_index("Performance Level")
+
+    st.bar_chart(prob_df)
+
+    # ---------------------- Gauge Chart ----------------------
+    st.subheader("📉 Performance Gauge")
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=performance,
+        title={"text": "Average Performance Score"},
+        gauge={
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "#001f54"},
+            'steps': [
+                {'range': [0, 60], 'color': "#ff4d4d"},
+                {'range': [60, 80], 'color': "#ffe94a"},
+                {'range': [80, 100], 'color': "#4CAF50"},
+            ],
+        }
+    ))
+
+    st.plotly_chart(fig, use_container_width=True)
